@@ -1,76 +1,62 @@
-# API Portal
+# Netlify AI Gateway Proxy
 
-An OpenAI-compatible reverse proxy API deployed on Netlify, with a React frontend portal for documentation and setup guidance.
+API-only OpenAI-compatible proxy for Netlify AI Gateway.
 
-## What it does
+This project exposes `/v1/models` and `/v1/chat/completions` for OpenAI-compatible clients such as CherryStudio. It uses Netlify Edge Functions and Netlify AI Gateway, so you do not need to provide OpenAI or Anthropic provider keys on Netlify.
 
-- Exposes OpenAI-compatible endpoints: `/v1/models` and `/v1/chat/completions`
-- Proxies requests to OpenAI or Anthropic based on the model name prefix
-- Protects API endpoints with a shared Bearer token: `PROXY_API_KEY`
-- Converts Anthropic message responses into OpenAI-compatible response shapes
-- Supports streaming responses for both providers
-- Provides a small portal page for setup instructions
+## Required Netlify environment variable
 
-## Environment variables
-
-Netlify AI Gateway automatically injects provider keys and base URLs into Netlify Functions and Edge Functions. You do not need to add your own OpenAI or Anthropic keys on Netlify unless you explicitly want to bypass Netlify AI Gateway.
-
-Set this variable in Netlify under **Site settings > Environment variables**:
+Set this in **Site settings > Environment variables**:
 
 | Variable | Description |
 | --- | --- |
-| `PROXY_API_KEY` | Any string, used as the shared Bearer token for API access |
+| `PROXY_API_KEY` | Shared Bearer token used by your client to access this proxy |
 
-Optional local or custom-upstream variables:
+Netlify AI Gateway automatically injects provider credentials and base URLs into Netlify compute. Do not set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` unless you intentionally want to use your own provider accounts instead of Netlify AI Gateway.
 
-| Variable | Description |
-| --- | --- |
-| `OPENAI_API_KEY` | Optional. Only needed locally or if you want to use your own OpenAI key instead of Netlify AI Gateway |
-| `ANTHROPIC_API_KEY` | Optional. Only needed locally or if you want to use your own Anthropic key instead of Netlify AI Gateway |
-| `OPENAI_BASE_URL` | Optional OpenAI-compatible upstream base URL. Netlify AI Gateway sets this automatically on Netlify |
-| `ANTHROPIC_BASE_URL` | Optional Anthropic-compatible upstream base URL. Netlify AI Gateway sets this automatically on Netlify |
-
-## API endpoints
+## Endpoints
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
 | GET | `/api/healthz` | None | Health check |
-| GET | `/v1/models` | Bearer | List available models |
-| POST | `/v1/chat/completions` | Bearer | Chat completions, including streaming |
+| GET | `/v1/models` | Bearer | List models |
+| POST | `/v1/chat/completions` | Bearer | OpenAI-compatible chat completions |
 
-## Client setup
+## CherryStudio
 
-Use this Base URL in OpenAI-compatible clients such as CherryStudio:
+After deployment, configure CherryStudio with:
 
 ```text
-https://YOUR-SITE.netlify.app/v1
+Base URL: https://YOUR-SITE.netlify.app/v1
+API Key: your PROXY_API_KEY value
 ```
 
-Do not point clients at `/v1/chat/completions`; clients append that path themselves.
+Do not set the Base URL to `/v1/chat/completions`; CherryStudio appends endpoint paths itself.
 
-Use your `PROXY_API_KEY` as the API key.
+## Deploy from GitHub
 
-## GitHub to Netlify flow
+1. Import this repository in Netlify.
+2. Use the existing `netlify.toml`.
+3. Set `PROXY_API_KEY`.
+4. Deploy.
 
-1. Upload this folder to a GitHub repository.
-2. In Netlify, choose **Add new project > Import an existing project**.
-3. Select the GitHub repository.
-4. Keep the detected build command as `vite build`.
-5. Keep the publish directory as `dist`.
-6. Add `PROXY_API_KEY` before the first production deploy.
-7. Deploy.
+The build command is:
 
-No Netlify Agent rewrite step is required after this repository is ready.
+```text
+npm run build
+```
 
-## Running locally
+The publish directory is:
+
+```text
+public
+```
+
+## Local development
 
 ```bash
 npm install
 netlify dev
 ```
 
-The local app should be available at:
-
-```text
-http://localhost:8888
-```
+For local testing without Netlify AI Gateway, set provider keys in `.env`.

@@ -1,6 +1,6 @@
 [build]
-  command = "vite build"
-  publish = "dist"
+  command = "npm run build"
+  publish = "public"
 
 [[edge_functions]]
   function = "healthz"
@@ -16,5 +16,5 @@
 
 [dev]
   command = "npm run dev"
-  targetPort = 3000
+  targetPort = 8888
   port = 8888
