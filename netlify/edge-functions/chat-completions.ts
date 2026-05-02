@@ -1,14 +1,9 @@
 import type { Config } from '@netlify/edge-functions'
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-}
+import { CORS_HEADERS, isAuthorized, unauthorized } from './auth.ts'
 
 interface Message {
   role: string
-  content: string
+  content: unknown
 }
 
 interface ChatRequest {
@@ -16,8 +11,11 @@ interface ChatRequest {
   messages: Message[]
   stream?: boolean
   max_tokens?: number
+  max_completion_tokens?: number
   temperature?: number
   top_p?: number
+  stop?: string | string[]
+  stop_sequences?: string[]
 }
 
 function makeId(): string {
@@ -71,18 +69,55 @@ async function openaiStream(body: ChatRequest, apiKey: string): Promise<Response
 function toAnthropicBody(body: ChatRequest) {
   const system = body.messages
     .filter((m) => m.role === 'system')
-    .map((m) => m.content)
+    .map((m) => stringifyContent(m.content))
     .join('\n')
 
-  const messages = body.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  const messages = body.messages
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({ role: m.role, content: normalizeAnthropicContent(m.content) }))
+
+  const stopSequences = body.stop_sequences ?? normalizeStop(body.stop)
 
   return {
     model: body.model,
     messages,
     ...(system ? { system } : {}),
-    max_tokens: body.max_tokens ?? 4096,
+    max_tokens: body.max_tokens ?? body.max_completion_tokens ?? 4096,
     ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
+    ...(body.top_p !== undefined ? { top_p: body.top_p } : {}),
+    ...(stopSequences.length > 0 ? { stop_sequences: stopSequences } : {}),
   }
+}
+
+function normalizeStop(stop: ChatRequest['stop']): string[] {
+  if (typeof stop === 'string') return [stop]
+  if (Array.isArray(stop)) return stop.filter((value): value is string => typeof value === 'string')
+  return []
+}
+
+function stringifyContent(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === 'string') return part
+        if (part && typeof part === 'object' && 'text' in part && typeof part.text === 'string') {
+          return part.text
+        }
+        return ''
+      })
+      .join('')
+  }
+  return ''
+}
+
+function normalizeAnthropicContent(content: unknown): unknown {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    const text = stringifyContent(content)
+    return text || ''
+  }
+  return ''
 }
 
 // --- Anthropic non-stream → OpenAI format ---
@@ -232,15 +267,8 @@ export default async (req: Request) => {
     return new Response(null, { status: 204, headers: CORS_HEADERS })
   }
 
-  const proxyApiKey = Netlify.env.get('PROXY_API_KEY')
-  const auth = req.headers.get('Authorization') ?? ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-
-  if (!proxyApiKey || token !== proxyApiKey) {
-    return Response.json(
-      { error: { message: 'Unauthorized', type: 'invalid_request_error' } },
-      { status: 401, headers: CORS_HEADERS },
-    )
+  if (!isAuthorized(req)) {
+    return unauthorized()
   }
 
   let body: ChatRequest

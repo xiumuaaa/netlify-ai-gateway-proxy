@@ -1,10 +1,5 @@
 import type { Config } from '@netlify/edge-functions'
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-}
+import { CORS_HEADERS } from './auth.ts'
 
 const MODELS = [
   { id: 'gpt-5.2', owned_by: 'openai' },
@@ -21,17 +16,6 @@ const MODELS = [
 export default async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS })
-  }
-
-  const proxyApiKey = Netlify.env.get('PROXY_API_KEY')
-  const auth = req.headers.get('Authorization') ?? ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-
-  if (!proxyApiKey || token !== proxyApiKey) {
-    return Response.json({ error: { message: 'Unauthorized', type: 'invalid_request_error' } }, {
-      status: 401,
-      headers: CORS_HEADERS,
-    })
   }
 
   const data = MODELS.map((m) => ({

@@ -22,6 +22,19 @@ Netlify AI Gateway automatically injects provider credentials and base URLs into
 | GET | `/v1/models` | Bearer | List models |
 | POST | `/v1/chat/completions` | Bearer | OpenAI-compatible chat completions |
 
+## SillyTavern
+
+Recommended setup:
+
+```text
+API: Chat Completion
+Chat Completion Source: Custom (OpenAI-compatible)
+Custom Endpoint / Base URL: https://YOUR-SITE.netlify.app/v1
+API Key: your PROXY_API_KEY value
+```
+
+This project also accepts common reverse-proxy password headers, including `x-proxy-password` and `x-api-key`, for better SillyTavern compatibility.
+
 ## CherryStudio
 
 After deployment, configure CherryStudio with:
