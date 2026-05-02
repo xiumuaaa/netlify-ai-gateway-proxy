@@ -1,0 +1,20 @@
+[build]
+  command = "vite build"
+  publish = "dist"
+
+[[edge_functions]]
+  function = "healthz"
+  path = "/api/healthz"
+
+[[edge_functions]]
+  function = "models"
+  path = "/v1/models"
+
+[[edge_functions]]
+  function = "chat-completions"
+  path = "/v1/chat/completions"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
+  port = 8888
